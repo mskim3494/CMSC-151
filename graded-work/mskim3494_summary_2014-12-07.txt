@@ -1,0 +1,23 @@
+This file has been automatically generated for "mskim3494" on Dec 7, 2014.
+
+Here is a summary of your graded work thus far.
+
+mskim3494,exam1,61,100
+mskim3494,exam2,91,100
+mskim3494,hw1,94,100
+mskim3494,hw2,98,100
+mskim3494,hw3,98.5,100
+mskim3494,hw4,96,100
+mskim3494,hw5,46,50
+mskim3494,lab2,88,100
+mskim3494,lab3,96,100
+mskim3494,lab4,100,100
+mskim3494,lab5,100,100
+mskim3494,lab6,97,100
+mskim3494,lab7,48,50
+mskim3494,projA,133,150
+
+Of the course credit available so far, you have earned about 84.66% of it
+(taking weights into account).
+
+Note: this percentage may move up or down when we grade the remaining work.

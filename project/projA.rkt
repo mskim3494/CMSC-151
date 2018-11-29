@@ -1,0 +1,492 @@
+#lang typed/racket
+(require typed/test-engine/racket-tests)
+
+;; ========= PROJECT A =========
+;;                by: Min Su Kim
+
+(define-type Player (U 'black 'white))
+
+(define-struct Pos
+  ([row : Integer]  ;; an integer on the interval [0,7]
+   [col : Integer]) ;; an integer on the interval [0,7]
+  #:transparent)
+
+(define-struct Board
+  ([squares : (Listof (U Player 'none))]) ;; a list of length 64
+  #:transparent)
+
+(define-struct Game
+  ([board : Board]
+   [next  : Player])
+  #:transparent)
+
+(: new-game : Game)
+;;starts a new game
+(define new-game
+  (Game 
+   (Board (list 'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'white 'black 'none 'none 'none
+                'none 'none 'none 'black 'white 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none))
+               'black))
+(define test-board
+  (Board (list 'none 'none 'none 'none 'none 'none 'none 'none
+               'none 'none 'none 'none 'none 'none 'none 'none
+               'none 'none 'white 'none 'white 'none 'none 'none
+               'none 'none 'white 'black 'black 'none 'none 'none
+               'none 'none 'white 'black 'none 'none 'none 'none
+               'none 'none 'none 'none 'none 'none 'none 'none
+               'none 'none 'none 'none 'none 'none 'none 'none
+               'none 'none 'none 'none 'none 'none 'none 'none)))
+
+(define test-board2
+  (Board (list 'none 'none 'none 'none 'none 'none 'none 'none
+               'none 'none 'none 'none 'none 'none 'none 'none
+               'none 'none 'white 'none 'white 'none 'none 'white
+               'black 'black 'black 'black 'black 'none 'none 'none
+               'none 'none 'white 'black 'none 'none 'none 'none
+               'none 'none 'none 'none 'none 'none 'none 'none
+               'none 'none 'none 'none 'none 'none 'none 'none
+               'none 'none 'none 'none 'none 'none 'none 'none)))
+(define new-game1
+  (Game 
+   (Board (list 'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'black 'white 'none 'none 'none
+                'none 'none 'none 'white 'black 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none
+                'none 'none 'none 'none 'none 'none 'none 'none))
+   'black))
+
+(: pos->list : Pos -> Integer)
+;;find the position in terms of the list of the board
+(define (pos->list p)
+  (cond
+    [(< (or (Pos-row p) (Pos-col p)) 0) (error "invalid")]
+    [else (+ (* 8 (Pos-row p)) (Pos-col p))]))
+(check-expect (pos->list (Pos 4 4)) 36)
+
+(: board-ref : Board Pos -> (U Player 'none))
+;;Return the piece at the given square, or 'none.
+(define (board-ref board xy)
+  (list-ref (Board-squares board) (pos->list xy)))
+(check-expect (board-ref test-board (Pos 3 3)) 'black)
+
+(: int->pos : Integer -> Pos)
+;;turns integer into a position in the board
+(define (int->pos n)
+  (Pos (quotient n 8) (remainder n 8)))
+(check-expect (int->pos 36) (Pos 4 4))
+
+(: op : Player -> Player)
+;;find opposing player
+(define (op p) 
+  (cond
+    [(eq? p 'white) 'black]
+    [else 'white]))
+(check-expect (op 'white) 'black)
+(check-expect (op 'black) 'white)
+
+;;list of functions that move in desired direction
+(: up : Pos -> Pos)
+;;move one row up
+(define (up pos) (Pos (- (Pos-row pos) 1) (Pos-col pos)))
+(check-expect (up (Pos 4 4)) (Pos 3 4))
+
+(: down : Pos -> Pos)
+;;move one row down
+(define (down pos) (Pos (+ (Pos-row pos) 1) (Pos-col pos)))
+(check-expect (down (Pos 4 4)) (Pos 5 4))
+
+(: left : Pos -> Pos)
+;;move one column left
+(define (left pos) (Pos (Pos-row pos) (- (Pos-col pos) 1)))
+(check-expect (left (Pos 4 4)) (Pos 4 3))
+
+(: right : Pos -> Pos)
+;;move one column right
+(define (right pos) (Pos (Pos-row pos) (+ 1 (Pos-col pos))))
+(check-expect (right (Pos 4 4)) (Pos 4 5))
+
+(: nw : Pos -> Pos)
+;;move one in the north-west direction
+(define (nw pos) (Pos (- (Pos-row pos) 1) (- (Pos-col pos) 1)))
+(check-expect (nw (Pos 4 4)) (Pos 3 3))
+
+(: se : Pos -> Pos)
+;;move one in the south-east direction
+(define (se pos) (Pos (+ (Pos-row pos) 1) (+ (Pos-col pos) 1)))
+(check-expect (se (Pos 4 4)) (Pos 5 5))
+
+(: ne : Pos -> Pos)
+;;move one in the north-east direction
+(define (ne pos) (Pos (- (Pos-row pos) 1)(+ (Pos-col pos) 1)))
+(check-expect (ne (Pos 4 4)) (Pos 3 5))
+
+(: sw : Pos -> Pos)
+;;move one in the south-west direction
+(define (sw pos) (Pos (+ (Pos-row pos) 1) (- (Pos-col pos) 1)))
+(check-expect (sw (Pos 4 4)) (Pos 5 3))
+
+(: next-to : Pos Integer -> Pos)
+;; returns the position in desired direction
+;;I have assigned values (1-8) to the direction change of pos
+;;this is done for convenience
+(define (next-to pos direction)
+  (cond
+    [(eqv? direction 1) (up pos)]
+    [(eqv? direction 2) (down pos)]
+    [(eqv? direction 3) (left pos)]
+    [(eqv? direction 4) (right pos)]
+    [(eqv? direction 5) (nw pos)]
+    [(eqv? direction 6) (se pos)]
+    [(eqv? direction 7) (ne pos)]
+    [(eqv? direction 8) (sw pos)]
+    [else (error "N/A direction")]))
+(check-expect (next-to (Pos 4 4) 1) (Pos 3 4))
+
+(: check : Board Player Pos Integer -> Boolean)
+;;returns true if player can outflank 
+(define (check t q pos direction)
+    (cond
+      [(or
+        (> (Pos-col pos) 7)
+        (< (Pos-col pos) 0)
+        (> (Pos-row pos) 7)
+        (< (Pos-row pos) 0)) false]
+      [else 
+       (local
+         {(define qos (next-to pos direction))}
+         (cond
+           [(eqv? (board-ref t qos) 'none) false]
+           [(eqv? (board-ref t qos) (op q)) (check t q qos direction)]
+           [(eqv? (board-ref t qos) q) true]
+           [else (error "error")]))]))
+(check-expect (check test-board 'white (Pos 4 4) 1) #t)
+(check-expect (check test-board 'white (Pos 4 4) 2) #f)
+(check-expect (check test-board 'white (Pos 4 4) 5) #t)
+
+(: doublecheck : Board Player Pos Integer -> Boolean)
+;;determine whether the first adjacent tile in the desired direction is same color
+(define (doublecheck b p pos direction)
+  (cond
+    [(and (= (Pos-col pos) 0) (= direction (or 3 5 8))) #f]
+    [(and (= (Pos-row pos) 0) (= direction (or 1 5 7))) #f]
+    [else (eqv? (board-ref b (next-to pos direction)) p)]))
+(check-expect (doublecheck test-board2 'black (Pos 3 5) 3) #t)
+
+(define-struct num-bool 
+  ([num : Integer]
+   [bool : Boolean])
+   #:transparent)
+;;for use in outflanks
+
+(define directions (list 1 2 3 4 5 6 7 8))
+;;for use in outflanks
+
+(: outflanks? : Board Player Pos -> Boolean)
+;;returns true if that player can outflank the opponent by placing a piece at that position
+(define (outflanks? b p pos)
+  (cond
+    [(not (eqv? 'none (board-ref b pos))) #f]
+    [else
+     (local
+       {(define k
+          (map (lambda ([z : num-bool]) (num-bool-num z))
+               (filter (lambda ([z : num-bool]) (eqv? (num-bool-bool z) #f)) 
+                       (map (lambda ([xx : Integer]) 
+                              (num-bool xx (doublecheck b p pos xx))) directions))))
+        (: run-outflank : Board Player Pos (Listof Integer) -> Boolean)
+        ;;use check on directions that could possibly be outflanked
+        (define (run-outflank b p pos a)
+          (cond
+            [(empty? a) #f]
+            [(cons? a)
+             (if
+              (check b p pos (first a))
+              #t
+              (run-outflank b p pos (rest a)))]))}
+       (run-outflank b p pos k))]))
+(check-expect (outflanks? test-board 'white (Pos 4 4)) true)
+(check-expect (outflanks? (Game-board new-game) 'black (Pos 2 3)) true)
+(check-expect (outflanks? (Game-board new-game) 'black (Pos 3 2)) true)
+(check-expect (outflanks? (Game-board new-game) 'black (Pos 4 5)) true)
+(check-expect (outflanks? (Game-board new-game) 'black (Pos 5 4)) true)
+
+(: flips-1d : Board Player Pos Integer -> (Listof Pos))
+;;determine the positions to be flipped in the specified direction
+(define (flips-1d b p pos direction)
+  (define next (next-to pos direction))
+  (cond
+    [(or
+      (> (Pos-col pos) 7)
+      (< (Pos-col pos) 0)
+      (> (Pos-row pos) 7)
+      (< (Pos-row pos) 0)) '()]
+    [(eqv? #f (check b p pos direction)) '()]
+    [(eqv? (board-ref b next) p) '()]
+    [(eqv? (board-ref b next) 'none) '()]
+    [(eqv? (board-ref b next) (op p)) 
+     (cons next (flips-1d b p next direction))]
+    [else (error "flips-1d error")]))
+(check-expect (flips-1d test-board2 'white (Pos 4 4) 1) (list (Pos 3 4)))
+(check-expect (flips-1d test-board2 'white (Pos 4 4) 3) (list (Pos 4 3)))
+(check-expect (flips-1d test-board2 'white (Pos 4 4) 5) (list(Pos 3 3)))
+
+(: flips : Board Player Pos -> (Listof Pos))
+;; determine the positions to be flipped given a move
+(define (flips b p pos)
+  (cond
+    [(not (outflanks? b p pos)) '()]
+    [else
+     (foldr (inst append Pos) '() ;;found use of inst append on piazza, question answered by Prof. Reppy
+            (map (lambda ([z : Integer]) (flips-1d b p pos z)) directions))]))
+(check-expect 
+ (flips test-board 'white (Pos 4 4)) 
+ (list (Pos 3 4) (Pos 4 3) (Pos 3 3)))
+
+(: change : Board Player Pos -> (Listof (U Player 'none)))
+;;change desired position to the given player
+(define (change b p pos)
+   (append
+    (reverse-ref (Board-squares b) (- 64 (pos->list pos)))
+    (list p)
+    (ref1 (Board-squares b) (+ 1 (pos->list pos)))))
+
+(: ref1 : (Listof (U Player 'none)) Integer -> (Listof (U Player 'none)))
+;;reduce given length of board to the integer given
+(define (ref1 board n)
+  (cond
+    [(= n 0) board]
+    [else (ref1 (rest board) (- n 1))]))
+
+(: reverse-ref : (Listof (U Player 'none)) Integer -> (Listof (U Player 'none)))
+;;reduce given length of board by the integer given (from last to first)
+(define (reverse-ref board n)
+  (cond
+    [(= n 0) board]
+    [else 
+     (reverse-ref 
+      (reverse (cdr (reverse board)))
+      (- n 1))]))
+
+(: apply-change : Board Player (Listof Pos) -> Board)
+;; apply change on the board effected by the list
+(define (apply-change b p a)
+  (cond
+    [(empty? a) b]
+    [else
+     (apply-change (Board(change b p (first a))) p (rest a))]))
+
+(: apply-move : Game Player Pos -> Game)
+;;Given a game, a player and a position, apply the move 
+;;to the game board and return the subsequent game state
+(define (apply-move game p pos)
+  (cond
+    [(not (eq? (Game-next game) p)) (error "illegal")]
+    [(not (outflanks? (Game-board game) p pos)) (error "illegal move")]
+    [else
+     (local
+       {(define to-flip (cons pos (flips (Game-board game) p pos)))}
+       (Game
+        (apply-change (Game-board game) p to-flip)
+        (op p)))]))
+(define m1 (apply-move new-game1 'black (Pos 2 4)))
+(define m2 (apply-move m1 'white (Pos 2 3)))
+(define m3 (apply-move m2 'black (Pos 2 2)))
+(define m4 (apply-move m3 'white (Pos 2 5)))
+(define m5 (apply-move m4 'black (Pos 4 2)))
+(define m6 (apply-move m5 'white (Pos 3 2)))
+(define m7 (apply-move m6 'black (Pos 4 5)))
+(define m8 (apply-move m7 'white (Pos 5 2)))
+(define m9 (apply-move m8 'black (Pos 4 1)))
+;;eyeball test from looking at each one (both in list and image)
+;;compared to actual gameplay
+
+(define white-wins
+  (Game
+   (Board
+    (list 'black 'white 'white 'white 'white 'white 'white 'white
+          'black 'black 'white 'black 'black 'black 'black 'white
+          'black 'black 'black 'white 'white 'white 'white 'white
+          'white 'white 'black 'black 'black 'black 'white 'white
+          'white 'white 'white 'black 'black 'black 'white 'white
+          'white 'white 'white 'black 'black 'black 'white 'white
+          'white 'black 'black 'white 'white 'white 'white 'white
+          'white 'white 'white 'white 'white 'white 'white 'black))
+   'black))
+
+(: game-over? : Game -> Boolean)
+;; is the game over?
+(define (game-over? game)
+  (local
+    {(define gb (Game-board game))
+     (define gp (Game-next game))
+     (: checking : Board Player Integer -> Boolean)
+     ;;apply outflanks? to each tile in the board
+     (define (checking b p n)
+       (cond
+         [(= n 64) #t]
+         [else
+          (if
+           (outflanks? b p (int->pos n))
+           #f
+           (checking b p (+ n 1)))]))}
+  (and (checking gb gp 0) (checking gb (op gp) 0))))
+(check-expect (game-over? white-wins) #t)
+
+(: score : Game Player -> Integer)
+;;finds the score of wanted player
+;;separated from outcome on purpose for future use in game-image
+(define (score game p)
+  (length (filter (lambda 
+                      ([x : (U Player 'none)]) (eqv? x p)) 
+                  (Board-squares (Game-board game)))))
+(check-expect (score m1 'black) 4)
+(check-expect (score white-wins 'white) 41)
+(check-expect (score white-wins 'black) 23)
+
+(: outcome : Game -> (U Player 'tie))
+;;determines the winner of the match
+(define (outcome game)
+  (local
+    {(define a (score game 'white))
+     (define b (score game 'black))}
+  (cond
+    [(= a b) 'tie]
+    [(< a b) 'black]
+    [(> a b) 'white]
+    [else (error "outcome error")])))
+(check-expect (outcome white-wins) 'white)
+
+(require/typed 2htdp/image
+   [#:opaque Image image?]
+   [empty-image Image]
+   [rectangle (-> Number Number String String Image)]
+   [circle (-> Integer String String Image)]
+   [square (-> Integer String String Image)]
+   [text (-> String Number String Image)] 
+   [beside (-> Image * Image)]
+   [beside/align (-> String Image * Image)]
+   [above (-> Image * Image)]
+   [overlay (-> Image * Image)])
+
+(: blank-tile : Integer -> Image)
+;;returns image with a blank tile
+(define (blank-tile size)
+  (overlay (square size "outline" "black")
+           (square size "solid" "green")))
+
+(: tile : Any Integer -> Image)
+;;returns tile image with corresponding player
+(define (tile p size)
+  (cond
+    [(eqv? p 'none) (blank-tile size)]
+    [(eqv? p 'white) (overlay (circle (exact-floor(/ size 4)) "solid" "white")
+                              (circle (exact-floor(/ size 4)) "outline" "black")
+                              (blank-tile size))]
+    [(eqv? p 'black) (overlay (circle (exact-floor(/ size 4)) "solid" "black") 
+                              (blank-tile size))]
+    [(integer? p) (overlay (text (number->string p) size "black")
+                           (square size "outline" "black")
+                           (square size "solid" "yellow"))]
+    [(string? p) (overlay (square size "outline" "black")
+                          (square size "solid" "yellow"))]
+    [else (error "error tile")]))
+
+(define nums (build-list 8 (lambda ([x : Integer]) x)))
+
+(: build-row : Any Integer (Listof Any) -> Image)
+;;create a subsequent row with corresponding player positions
+(define (build-row num size l)
+  (local
+    {(: rowhelper : Integer (Listof Any) -> Image)
+     ;;create a row using recursion
+     (define (rowhelper size l)
+       (cond
+         [(empty? l) empty-image]
+         [(cons? l)
+          (beside
+           (tile (first l) size)
+           (rowhelper size (rest l)))]))}
+  (beside
+   (tile num size)
+   (rowhelper size l))))
+
+(: extract-row : Board Integer Integer -> Image)
+;;extract desired row from a board
+(define (extract-row board row size)
+  (local
+  {(define r1 (* 8 row))
+   (: posns : Board Integer Integer -> (Listof (U Player 'none)))
+   ;;extracts the corresponding positions in the board
+   (define (posns b first last)
+     (cond
+       [(>= first last) '()]
+       [(cons (board-ref b (int->pos first)) (posns b (+ 1 first) last))]))
+   (define poss (posns board r1 (+ r1 8)))}
+    (build-row row size poss))) 
+
+(: board-image : Board Integer -> Image)
+;;create an image of the board
+(define (board-image board w)
+  (local
+    {(define width (exact-floor (/ w 9)))
+     (define rows (list 0 1 2 3 4 5 6 7))
+     (define l
+       (map (lambda ([z : Integer]) (extract-row board z width)) rows))
+     (: m : (Listof Image) -> Image)
+     ;;make a list of images into a single one
+     (define (m l) 
+       (cond
+         [(empty? l) empty-image]
+         [(cons? l) (above (first l) (m (rest l)))]))}
+    (above
+     (build-row "first" width nums)
+     (m l))))
+;;eyeball test
+(board-image test-board 180)
+  
+(: game-image : Game Integer -> Image)
+;;show an image of the current game state
+(define (game-image g w)
+  (local
+    {(define width (exact-floor (/ w 9)))
+     (: ef : Integer -> Integer)
+     ;;to simplify code, divides width by desired number
+     (define (ef n) (exact-floor (/ width n))) }
+    (beside/align "middle"
+                  (above
+                   (board-image (Game-board g) width)
+                   (beside
+                    (overlay (text "Turn" (ef 10) "black")
+                             (rectangle (ef 3) (ef 8) "outline" "black"))
+                    (overlay (text (symbol->string (Game-next g)) (ef 10) "black")
+                             (rectangle (ef 3) (ef 8) "outline" "black"))))
+                   (above 
+                    (text "Score" (ef 10) "black")
+                    (beside
+                     (circle (ef 15) "solid" "black")
+                     (text (number->string (score g 'black)) (ef 10) "black"))
+                    (beside
+                     (circle (ef 15) "outline" "black")
+                     (text (number->string (score g 'white)) (ef 10) "black"))))))
+;eyeball test
+(game-image m1 1500)
+(game-image white-wins 1500)
+
+;;BONUS
+;;checker, for fun
+(: visualize-move : Game Player Pos Integer -> Image)
+(define (visualize-move g p pos size)
+  (game-image (apply-move g p pos) size))
+(visualize-move m1 'white (Pos 2 3) 1500)
+(visualize-move m2 'black (Pos 2 2) 1500)
+
+(test)

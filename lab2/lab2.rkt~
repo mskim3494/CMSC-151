@@ -1,0 +1,54 @@
+#lang typed/racket
+
+;;Part 1
+(: leap? (-> Integer Boolean))
+(define (leap? y)
+  (cond 
+    [(= (remainder y 100) 0) false]
+    [(= (remainder y 4) 0) true]
+    [else false]))
+(leap? 400)
+(leap? 1920)
+
+;;Part 2
+(: date-valid? (-> Integer Integer Integer Boolean))
+(define (date-valid? m d y)
+  (cond
+    [(and (= 0 m) (> m 13)) false]
+    [(and (= m 1) (> d 32)) false]
+    [(and (= m 3) (> d 32)) false]
+    [(and (= m 5) (> d 32)) false]
+    [(and (= m 7) (> d 32)) false]
+    [(and (= m 8) (> d 32)) false]
+    [(and (= m 10) (> d 32)) false]
+    [(and (= m 12) (> d 32)) false]
+    [(and (= m 2) (> d 29)) false]
+    [(and (= m 4) (> d 31)) false]
+    [(and (= m 6) (> d 31)) false]
+    [(and (= m 9) (> d 31)) false]
+    [(and (= m 11) (> d 31)) false]
+    [(and (> 1899 y) (< 2100 y)) false]
+    [else true]))
+(date-valid? 10 7 2014)
+
+;;Part 3
+(: day-of-week (-> Integer Integer Integer String))
+(define (day-of-week m d y) 
+
+  (: leap? (-> Integer Integer))
+  (define (leap? j)
+  (cond 
+    [(= (remainder y 100) 0) false]
+    [(= (remainder y 4) 0) true]
+    [else false]
+    [(and (= 1 m) true) 0]
+    [(and (= 1 m) false) 1]
+    
+    
+    ))
+
+
+
+    (: n (-> Integer Integer Integer Integer Integer))
+    ((define n) (+ (- 1900 y) j d (exact-floor(/ y 4))))
+    
